@@ -290,6 +290,44 @@ public class ${cls} : TargetRules
 `;
 }
 
+/** Alle Plugin-Namen, die in dieser Engine-Installation existieren (alle .uplugin-Dateien unter Engine/Plugins). */
+const pluginCache = new Map();
+function enginePlugins(engineDir) {
+  if (pluginCache.has(engineDir)) return pluginCache.get(engineDir);
+  const names = new Set();
+  const skip = new Set(['Source', 'Content', 'Binaries', 'Intermediate', 'Resources', 'Shaders', 'Config', 'Docs', 'Extras', 'ThirdParty']);
+  const walk = (dir, depth) => {
+    if (depth > 6) return;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.isFile() && e.name.endsWith('.uplugin')) names.add(e.name.slice(0, -8));
+      else if (e.isDirectory() && !skip.has(e.name)) walk(path.join(dir, e.name), depth + 1);
+    }
+  };
+  walk(path.join(engineDir, 'Engine', 'Plugins'), 0);
+  pluginCache.set(engineDir, names);
+  return names;
+}
+
+/**
+ * Entfernt Plugins aus der .uproject, die es in dieser Engine-Version nicht gibt
+ * (z. B. MassEntity, das ab UE 5.5 fest in die Engine gewandert ist). Gibt die entfernten Namen zurück.
+ */
+function fixProjectPlugins(uprojectPath, engineDir) {
+  const available = enginePlugins(engineDir);
+  if (available.size < 20) return []; // Engine-Plugins nicht lesbar – lieber nichts anfassen
+  const proj = JSON.parse(fs.readFileSync(uprojectPath, 'utf8'));
+  const before = proj.Plugins || [];
+  const keep = before.filter((p) => available.has(p.Name) || fs.existsSync(path.join(path.dirname(uprojectPath), 'Plugins', p.Name)));
+  const removed = before.filter((p) => !keep.includes(p)).map((p) => p.Name);
+  if (removed.length) {
+    proj.Plugins = keep;
+    fs.writeFileSync(uprojectPath, JSON.stringify(proj, null, 2));
+  }
+  return removed;
+}
+
 function findUproject(root) {
   try {
     const f = fs.readdirSync(root).find((x) => x.endsWith('.uproject'));
@@ -297,4 +335,4 @@ function findUproject(root) {
   } catch { return null; }
 }
 
-module.exports = { runScript, winCommandLine, findEngines, engineHelp, launcherInstalls, runProcess, scaffoldProject, findUproject, safeName, isWin };
+module.exports = { fixProjectPlugins, enginePlugins, runScript, winCommandLine, findEngines, engineHelp, launcherInstalls, runProcess, scaffoldProject, findUproject, safeName, isWin };

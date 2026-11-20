@@ -221,6 +221,7 @@ class ToolContext {
         try { ver = this.engine().version; } catch { /* keine Engine – Standard */ }
         const r = unreal.scaffoldProject(parent, input.name, ver, input.description);
         this.setProjectRoot(r.root);
+        try { const e = this.engine(); unreal.fixProjectPlugins(unreal.findUproject(r.root), e.dir); } catch { /* keine Engine */ }
         return `${r.created ? 'Projekt angelegt' : 'Projekt existiert bereits, ist jetzt aktiv'}: ${r.root} (Engine ${ver})`;
       }
       case 'list_files': {
@@ -263,6 +264,8 @@ class ToolContext {
         const up = unreal.findUproject(this.resolve('.'));
         if (!up) throw new Error('Keine .uproject-Datei im Projekt');
         const proj = path.basename(up, '.uproject');
+        const removed = unreal.fixProjectPlugins(up, eng.dir);
+        if (removed.length) this.onLog && this.onLog(`[Unreal Forge] In UE ${eng.version} nicht vorhandene Plugins aus dem Projekt entfernt: ${removed.join(', ')}\n`);
         const r = await unreal.runScript(eng.build,
           [`${proj}Editor`, eng.platform, 'Development', `-Project=${up}`, '-WaitMutex', '-NoHotReloadFromIDE'],
           { cwd: eng.dir, onOutput: this.onLog });

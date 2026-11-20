@@ -1,6 +1,6 @@
 {
   "name": "unreal-forge",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "KI-Desktop-App, die Unreal-Engine-5-Spiele baut – kostenlos mit lokaler KI oder optional mit Claude",
   "main": "src/main.js",
   "scripts": {

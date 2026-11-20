@@ -96,3 +96,24 @@ const { TOOLS, ToolContext, validateInput } = require('../src/tools');
   assert.ok(r.output.includes('ARG[-Project=C:\\a b\\c.uproject]'), r.output);
   console.log('Windows .bat mit Leerzeichen: Test bestanden.');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// --- Plugins, die es in der Engine nicht gibt, werden entfernt (z. B. MassEntity ab UE 5.5) ---
+(() => {
+  const eng = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-plug-'));
+  const names = ['PCG', 'ChaosVehiclesPlugin', 'MassGameplay', 'MassAI', 'MassCrowd', 'ZoneGraph', 'StateTree', 'SmartObjects',
+    'GameplayAbilities', 'EnhancedInput', 'CommonUI', 'PythonScriptPlugin', 'EditorScriptingUtilities', 'ModelingToolsEditorMode',
+    'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7']; // ohne MassEntity
+  for (const n of names) {
+    const d = path.join(eng, 'Engine', 'Plugins', 'Runtime', n);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, n + '.uplugin'), '{}');
+  }
+  const projDir = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-proj-'));
+  const r = unreal.scaffoldProject(projDir, 'Flughafen', '5.8', 'x');
+  const up = unreal.findUproject(r.root);
+  assert.deepStrictEqual(unreal.fixProjectPlugins(up, eng), ['MassEntity']);
+  const after = JSON.parse(fs.readFileSync(up, 'utf8')).Plugins.map((p) => p.Name);
+  assert.ok(!after.includes('MassEntity') && after.includes('PCG') && after.length === 14);
+  assert.deepStrictEqual(unreal.fixProjectPlugins(up, eng), [], 'zweiter Lauf ändert nichts');
+  console.log('Plugin-Bereinigung: Test bestanden.');
+})();

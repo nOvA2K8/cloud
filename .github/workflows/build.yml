@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build:
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +39,8 @@ jobs:
 
   release:
     needs: build
+    # Auch veröffentlichen, wenn ein System (z. B. Mac) keinen Runner bekommt.
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

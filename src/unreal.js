@@ -201,6 +201,8 @@ r.SkinCache.CompileShaders=True
 
 [/Script/WindowsTargetPlatform.WindowsTargetSettings]
 DefaultGraphicsRHI=DefaultGraphicsRHI_DX12
+-D3D12TargetedShaderFormats=PCD3D_SM5
++D3D12TargetedShaderFormats=PCD3D_SM6
 
 [/Script/Engine.Engine]
 bUseFixedFrameRate=False

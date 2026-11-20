@@ -117,3 +117,12 @@ const { TOOLS, ToolContext, validateInput } = require('../src/tools');
   assert.deepStrictEqual(unreal.fixProjectPlugins(up, eng), [], 'zweiter Lauf ändert nichts');
   console.log('Plugin-Bereinigung: Test bestanden.');
 })();
+
+// --- Vorlage aktiviert Shader Model 6 (nötig für Virtual Shadow Maps / Raytracing) ---
+(() => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-sm6-'));
+  const r = unreal.scaffoldProject(d, 'SmTest', '5.8', '');
+  const ini = fs.readFileSync(path.join(r.root, 'Config', 'DefaultEngine.ini'), 'utf8');
+  assert.ok(ini.includes('+D3D12TargetedShaderFormats=PCD3D_SM6'));
+  console.log('SM6 in Vorlage: Test bestanden.');
+})();

@@ -29,7 +29,7 @@ async function refreshProject() {
 
 async function refreshEngine() {
   const e = await window.forge.engines();
-  $('engine').textContent = e.length ? `UE ${e[0].version} gefunden` : 'nicht gefunden – Pfad in Einstellungen setzen (Projekte werden trotzdem erstellt)';
+  $('engine').textContent = e.length ? `UE ${e[0].version} gefunden: ${e[0].dir}` : 'NICHT gefunden – ⚙ Einstellungen → „Unreal-Engine-Ordner“ wählen (z. B. C:\\Program Files\\Epic Games\\UE_5.8)';
 }
 
 function renderHistory(items) {

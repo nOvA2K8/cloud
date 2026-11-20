@@ -208,7 +208,7 @@ class ToolContext {
 
   engine() {
     const engines = unreal.findEngines(this.getSettings().enginePath);
-    if (!engines.length) throw new Error('Keine Unreal Engine 5 gefunden. Engine-Pfad in den Einstellungen der App angeben.');
+    if (!engines.length) throw new Error(unreal.engineHelp() + ' Sag dem Nutzer genau das – behaupte NICHT, dass er Unreal erst installieren muss.');
     return engines[0];
   }
 

@@ -38,3 +38,28 @@ const { TOOLS, ToolContext, validateInput } = require('../src/tools');
   require('../src/agent'); // lädt das SDK
   console.log('Alle Tests bestanden.');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// --- Engine-Erkennung (Linux-Pfade als Stellvertreter für Windows) ---
+(() => {
+  if (process.platform === 'win32' || process.platform === 'darwin') return;
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-eng-'));
+  const mk = (dir, ver) => {
+    const bin = path.join(dir, 'Engine', 'Binaries', 'Linux');
+    fs.mkdirSync(bin, { recursive: true });
+    fs.writeFileSync(path.join(bin, 'UnrealEditor-Cmd'), '');
+    fs.mkdirSync(path.join(dir, 'Engine', 'Build'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'Engine', 'Build', 'Build.version'), JSON.stringify({ MajorVersion: 5, MinorVersion: ver }));
+  };
+  // 1) Nutzer wählt nur den Überordner "Epic Games" statt UE_5.8
+  mk(path.join(base, 'Spiele', 'Epic Games', 'UE_5.8'), 8);
+  let e = unreal.findEngines(path.join(base, 'Spiele'), { roots: [] });
+  assert.strictEqual(e[0] && e[0].version, '5.8', 'findet Engine im Unterordner');
+  // 2) Engine an ungewöhnlichem Ort, nur über die Epic-Launcher-Datei bekannt
+  mk(path.join(base, 'X', 'Irgendwo'), 7);
+  const dat = path.join(base, 'LauncherInstalled.dat');
+  fs.writeFileSync(dat, JSON.stringify({ InstallationList: [{ InstallLocation: path.join(base, 'X', 'Irgendwo'), AppName: 'UE_5.7' }, { InstallLocation: '/x', AppName: 'Fortnite' }] }));
+  e = unreal.findEngines('', { roots: [], launcherFile: dat });
+  assert.strictEqual(e[0] && e[0].version, '5.7', 'findet Engine über Launcher-Datei');
+  assert.match(unreal.engineHelp(), /Einstellungen/);
+  console.log('Engine-Erkennung: Tests bestanden.');
+})();

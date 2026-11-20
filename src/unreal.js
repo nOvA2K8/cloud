@@ -7,34 +7,74 @@ const { spawn } = require('child_process');
 const isWin = process.platform === 'win32';
 const isMac = process.platform === 'darwin';
 
-/** Sucht installierte Unreal-Engine-5-Versionen an den üblichen Orten. */
-function findEngines(extraPath) {
-  const candidates = [];
-  if (extraPath) candidates.push(extraPath);
-  const roots = isWin
-    ? ['C:\\Program Files\\Epic Games', 'D:\\Program Files\\Epic Games', 'D:\\Epic Games', 'E:\\Epic Games']
-    : isMac
-      ? ['/Users/Shared/Epic Games']
-      : [path.join(os.homedir(), 'UnrealEngine'), '/opt/UnrealEngine', path.join(os.homedir(), 'Epic Games')];
-  for (const root of roots) {
-    try {
-      for (const d of fs.readdirSync(root)) {
-        if (/^UE_5/.test(d) || d === 'UnrealEngine') candidates.push(path.join(root, d));
+/** Liest aus der Epic-Launcher-Datei, wo Engines installiert wurden (auch auf anderen Laufwerken). */
+function launcherInstalls(file) {
+  const f = file || (isWin
+    ? path.join(process.env.ProgramData || 'C:\\ProgramData', 'Epic', 'UnrealEngineLauncher', 'LauncherInstalled.dat')
+    : isMac ? '/Users/Shared/UnrealEngine/Launcher/LauncherInstalled.dat' : null);
+  if (!f) return [];
+  try {
+    const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+    return (j.InstallationList || [])
+      .filter((i) => /^UE_5/.test(i.AppName || '') || /UE_5/.test(i.InstallLocation || ''))
+      .map((i) => i.InstallLocation);
+  } catch { return []; }
+}
+
+/** Fügt einen Ordner hinzu – oder, falls er selbst keine Engine ist, seine UE_5.x-Unterordner. */
+function addCandidate(list, dir) {
+  if (!dir) return;
+  list.push(dir);
+  try {
+    for (const d of fs.readdirSync(dir)) {
+      if (/^UE_5/i.test(d) || d === 'UnrealEngine' || d === 'Epic Games') list.push(path.join(dir, d));
+      if (d === 'Epic Games') {
+        try { for (const e of fs.readdirSync(path.join(dir, d))) if (/^UE_5/i.test(e)) list.push(path.join(dir, d, e)); } catch { /* egal */ }
       }
-    } catch { /* Ordner existiert nicht */ }
+    }
+  } catch { /* Ordner existiert nicht */ }
+}
+
+/** Sucht installierte Unreal-Engine-5-Versionen: Einstellung, Epic-Launcher, übliche Ordner auf allen Laufwerken. */
+function findEngines(extraPath, opts = {}) {
+  const candidates = [];
+  addCandidate(candidates, extraPath);
+  for (const loc of launcherInstalls(opts.launcherFile)) candidates.push(loc);
+  let roots;
+  if (isWin) {
+    roots = [];
+    for (const drive of 'CDEFGH') {
+      roots.push(`${drive}:\\Program Files\\Epic Games`, `${drive}:\\Epic Games`, `${drive}:\\Games\\Epic Games`, `${drive}:\\`);
+    }
+    roots.push(path.join(os.homedir(), 'Epic Games'));
+  } else if (isMac) {
+    roots = ['/Users/Shared/Epic Games'];
+  } else {
+    roots = [path.join(os.homedir(), 'UnrealEngine'), '/opt/UnrealEngine', path.join(os.homedir(), 'Epic Games')];
   }
-  // Linux: Ordner selbst kann die Engine sein
-  if (!isWin && !isMac) candidates.push(...roots);
+  for (const r of opts.roots || roots) addCandidate(candidates, r);
 
   const found = [];
-  for (const dir of [...new Set(candidates)]) {
+  const seen = new Set();
+  for (const dir of candidates) {
+    const key = path.resolve(dir).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     const tools = engineTools(dir);
-    if (tools && fs.existsSync(tools.editorCmd)) {
-      const ver = (dir.match(/UE_(5\.\d+)/) || [])[1] || readEngineVersion(dir) || '5.x';
+    if (fs.existsSync(tools.editorCmd) || fs.existsSync(tools.editor)) {
+      if (!fs.existsSync(tools.editorCmd)) tools.editorCmd = tools.editor;
+      const ver = readEngineVersion(dir) || (dir.match(/UE_(5\.\d+)/i) || [])[1] || '5.x';
       found.push({ dir, version: ver, ...tools });
     }
   }
   return found.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true }));
+}
+
+/** Erklärt, wo gesucht wurde – für eine hilfreiche Fehlermeldung. */
+function engineHelp() {
+  return 'Keine Unreal Engine 5 gefunden. Lösung: In Unreal Forge auf ⚙ Einstellungen → „Unreal-Engine-Ordner“ den Ordner der Engine wählen ' +
+    '(z. B. C:\\Program Files\\Epic Games\\UE_5.8 – das ist der Ordner, in dem „Engine“ liegt) und speichern. ' +
+    'Prüfe außerdem im Epic Games Launcher unter „Unreal Engine → Bibliothek“, ob die Installation wirklich abgeschlossen ist (nicht nur heruntergeladen/in Warteschlange).';
 }
 
 function readEngineVersion(dir) {
@@ -238,4 +278,4 @@ function findUproject(root) {
   } catch { return null; }
 }
 
-module.exports = { findEngines, runProcess, scaffoldProject, findUproject, safeName, isWin };
+module.exports = { findEngines, engineHelp, launcherInstalls, runProcess, scaffoldProject, findUproject, safeName, isWin };

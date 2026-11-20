@@ -1,0 +1,67 @@
+{
+  "name": "unreal-forge",
+  "version": "0.1.0",
+  "description": "KI-Desktop-App, die mit Claude Fable Unreal-Engine-5-Spiele baut",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "test": "node test/smoke.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nOvA2K8/cloud.git"
+  },
+  "author": "nova2k8",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/nOvA2K8/cloud/issues"
+  },
+  "homepage": "https://github.com/nOvA2K8/cloud#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.11.0"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "Unreal Forge",
+  "build": {
+    "appId": "com.nova2k8.unrealforge",
+    "productName": "Unreal Forge",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "UnrealForge-${version}-${arch}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.developer-tools",
+      "artifactName": "UnrealForge-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development",
+      "artifactName": "UnrealForge-${version}-${arch}.${ext}"
+    }
+  }
+}

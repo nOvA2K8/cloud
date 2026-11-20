@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Unreal Forge</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside id="side">
+    <div class="brand"><span class="logo">◆</span> Unreal Forge</div>
+    <button id="btnNew" class="primary">＋ Neues Spiel</button>
+    <button id="btnOpen">Projekt öffnen …</button>
+    <div class="section">Aktives Projekt</div>
+    <div id="project" class="project">keins</div>
+    <button id="btnReveal" class="ghost">Ordner anzeigen</button>
+    <div class="section">Unreal Engine</div>
+    <div id="engine" class="muted">wird gesucht …</div>
+    <div class="spacer"></div>
+    <div id="usage" class="muted small"></div>
+    <button id="btnSettings" class="ghost">⚙ Einstellungen</button>
+  </aside>
+
+  <main>
+    <div id="chat">
+      <div id="welcome">
+        <h1>Was für ein Spiel bauen wir?</h1>
+        <p>Beschreib dein Spiel – Unreal Forge legt das Unreal-Engine-5-Projekt an, schreibt den Code, kompiliert ihn und baut die Welt.</p>
+        <div class="examples">
+          <button class="ex">Open-World-Stadt im Stil von Miami mit Autos, Fußgängern, Tag-Nacht-Zyklus und Polizei-System. Third-Person-Steuerung, ein- und aussteigen aus Autos.</button>
+          <button class="ex">Realistischer Survival-Shooter in einem verschneiten Bergwald, Wetter-System, Crafting und KI-Gegner.</button>
+          <button class="ex">Rennspiel auf prozedural generierten Küstenstraßen mit realistischer Fahrphysik.</button>
+        </div>
+      </div>
+    </div>
+    <div id="logbar"><pre id="log"></pre></div>
+    <form id="composer">
+      <textarea id="input" rows="3" placeholder="Beschreibe dein Spiel oder was als Nächstes passieren soll … (Strg+Enter zum Senden)"></textarea>
+      <div class="row">
+        <button type="button" id="btnLog" class="ghost small">Build-Log</button>
+        <div class="spacer"></div>
+        <button type="button" id="btnStop" class="danger" hidden>Stopp</button>
+        <button type="submit" id="btnSend" class="primary">Bauen ▶</button>
+      </div>
+    </form>
+  </main>
+
+  <dialog id="settings">
+    <form method="dialog" id="settingsForm">
+      <h2>Einstellungen</h2>
+      <label>Anthropic-API-Schlüssel
+        <input id="sKey" type="password" placeholder="sk-ant-…" autocomplete="off">
+        <span class="hint">Bekommst du unter console.anthropic.com → API Keys. Wird verschlüsselt auf deinem PC gespeichert.</span>
+      </label>
+      <label>Unreal-Engine-Ordner (optional)
+        <div class="row"><input id="sEngine" placeholder="automatisch, z.B. C:\Program Files\Epic Games\UE_5.5"><button type="button" id="pickEngine">…</button></div>
+      </label>
+      <label>Ordner für neue Projekte
+        <div class="row"><input id="sProjects"><button type="button" id="pickProjects">…</button></div>
+      </label>
+      <label>Denk-Tiefe
+        <select id="sEffort">
+          <option value="medium">Mittel – schneller, günstiger</option>
+          <option value="high">Hoch – empfohlen</option>
+          <option value="xhigh">Sehr hoch – für schwierige Systeme</option>
+          <option value="max">Maximum – langsam und teuer</option>
+        </select>
+      </label>
+      <div class="row end">
+        <button value="cancel" class="ghost">Abbrechen</button>
+        <button value="save" id="saveSettings" class="primary">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>

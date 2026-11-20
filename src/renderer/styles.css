@@ -1,0 +1,59 @@
+:root {
+  --bg: #0b0d12; --panel: #12151d; --panel2: #181c27; --line: #252a38;
+  --text: #e8eaf0; --muted: #8a91a6; --accent: #5b8cff; --accent2: #8f6bff;
+  --ok: #3ccf8e; --err: #ff5d6c;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; height: 100vh; display: flex; background: var(--bg); color: var(--text); font-size: 14px; }
+button { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; font-weight: 600; }
+button.ghost { background: transparent; }
+button.danger { background: var(--err); border: none; }
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+.spacer { flex: 1; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row.end { justify-content: flex-end; margin-top: 16px; }
+
+#side { width: 260px; background: var(--panel); border-right: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.brand { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+.logo { color: var(--accent); }
+.section { margin-top: 14px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.project { word-break: break-all; font-size: 12px; }
+
+main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#chat { flex: 1; overflow-y: auto; padding: 24px 32px; }
+#welcome { max-width: 760px; margin: 8vh auto 0; text-align: center; }
+#welcome h1 { font-size: 30px; margin-bottom: 8px; }
+.examples { display: grid; gap: 10px; margin-top: 24px; text-align: left; }
+.ex { text-align: left; line-height: 1.4; }
+
+.msg { max-width: 900px; margin: 0 auto 16px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+.msg.user { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.msg.assistant code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+.thinking { max-width: 900px; margin: 0 auto 10px; color: var(--muted); font-style: italic; font-size: 12px; white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 10px; max-height: 120px; overflow: hidden; }
+.tool { max-width: 900px; margin: 0 auto 8px; font-family: Consolas, monospace; font-size: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.tool .name { color: var(--accent); font-weight: 600; }
+.tool.ok .res { color: var(--ok); }
+.tool.err .res { color: var(--err); }
+.tool .res { white-space: pre-wrap; margin-top: 4px; max-height: 140px; overflow: auto; }
+.status { max-width: 900px; margin: 0 auto 10px; color: #ffcb6b; }
+.error { max-width: 900px; margin: 0 auto 10px; color: var(--err); }
+
+#logbar { display: none; height: 180px; border-top: 1px solid var(--line); background: #07080c; }
+#logbar.open { display: block; }
+#log { margin: 0; padding: 8px 12px; height: 100%; overflow: auto; font-size: 11px; color: #9aa3b8; }
+
+#composer { border-top: 1px solid var(--line); padding: 12px 32px 16px; background: var(--panel); }
+#input { width: 100%; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; }
+#input:focus { outline: none; border-color: var(--accent); }
+#composer .row { margin-top: 8px; }
+
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: 560px; max-width: 90vw; }
+dialog::backdrop { background: rgba(0,0,0,.6); }
+dialog label { display: block; margin-top: 14px; font-weight: 600; }
+dialog input, dialog select { width: 100%; margin-top: 6px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: inherit; }
+dialog .row input { flex: 1; }
+.hint { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 4px; }

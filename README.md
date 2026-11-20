@@ -7,7 +7,7 @@ Das Gehirn ist **Claude Fable 5.2**, das stärkste Modell von Anthropic. Es ist 
 ## Herunterladen
 
 1. Auf GitHub zu **Releases** (rechts) gehen. Alternativ unter **Actions** den letzten erfolgreichen Lauf öffnen und dort unten bei *Artifacts* herunterladen.
-2. Windows: `UnrealForge-…-x64-nsis.exe` (Installer) oder `…-portable.exe` (ohne Installation).
+2. Windows: `UnrealForge-Setup-….exe` (Installer) oder `UnrealForge-Portable-….exe` (ohne Installation).
    Mac: `.dmg`. Linux: `.AppImage`.
 3. Windows zeigt eventuell „Der Computer wurde durch Windows geschützt“, weil die App nicht signiert ist. Dann auf **Weitere Informationen → Trotzdem ausführen** klicken.
 

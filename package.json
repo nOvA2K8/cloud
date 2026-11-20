@@ -41,13 +41,13 @@
       "target": [
         "nsis",
         "portable"
-      ],
-      "artifactName": "UnrealForge-${version}-${arch}-${target}.${ext}"
+      ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "artifactName": "UnrealForge-Setup-${version}.${ext}"
     },
     "mac": {
       "target": [
@@ -62,6 +62,9 @@
       ],
       "category": "Development",
       "artifactName": "UnrealForge-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "UnrealForge-Portable-${version}.${ext}"
     }
   }
 }

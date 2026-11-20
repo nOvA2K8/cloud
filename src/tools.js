@@ -269,10 +269,10 @@ class ToolContext {
         const r = await unreal.runScript(eng.build,
           [`${proj}Editor`, eng.platform, 'Development', `-Project=${up}`, '-WaitMutex', '-NoHotReloadFromIDE'],
           { cwd: eng.dir, onOutput: this.onLog });
-        if (r.code !== 0 && /SDK validation failed|Sdk: not found|not a valid platform to build|Visual Studio.*not (found|installed)|No (valid )?(compiler|toolchain)|MSVC.*not found/i.test(r.output)) {
+        if (r.code !== 0 && /SDK validation failed|Sdk: not found|not a valid platform to build|Visual Studio.*not (found|installed)|No (valid )?(compiler|toolchain)|MSVC.*not found|NetFxSDK|\.NET Framework SDK/i.test(r.output)) {
           r.output += '\n\nLÖSUNG (an den Nutzer weitergeben): Auf dem PC fehlen Visual Studio bzw. das Windows SDK. ' +
             'Visual Studio Installer öffnen → Workloads "Spieleentwicklung mit C++" und "Desktopentwicklung mit C++" anhaken → ' +
-            'unter Installationsdetails ein Windows 11 SDK (10.0.22621 oder neuer) und die MSVC-C++-Buildtools anhaken → installieren → PC neu starten → erneut kompilieren. ' +
+            'unter Installationsdetails ein Windows 11 SDK (10.0.22621 oder neuer), die MSVC-C++-Buildtools und das ".NET Framework 4.8.1 SDK" anhaken → installieren → PC neu starten → erneut kompilieren. ' +
             'Das ist KEIN Code-Fehler im Projekt und Unreal ist korrekt installiert.';
         }
         if (r.code !== 0 && /is not recognized|wird nicht als|No such file|Startfehler/i.test(r.output)) {

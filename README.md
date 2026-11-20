@@ -1,57 +1,69 @@
 # Unreal Forge 🎮
 
-Eine Desktop-App, in der du einfach beschreibst, welches Spiel du willst. Die KI legt dafür das **Unreal-Engine-5-Projekt** an, schreibt den C++-Code, kompiliert ihn und baut die Welt per Editor-Skript.
+Eine Desktop-App, in der du einfach beschreibst, welches Spiel du willst. Die KI legt dafür das **Unreal-Engine-5-Projekt** an, schreibt den C++-Code, kompiliert ihn, recherchiert im Internet und **lernt aus jedem Fehler dazu**.
 
-Das Gehirn ist **Claude Fable 5.2**, das stärkste Modell von Anthropic. Es ist auf Unreal-Entwicklung eingestellt: große Open Worlds (World Partition, PCG), realistische Grafik (Lumen, Nanite), Fahrzeuge (Chaos Vehicles), Verkehr und Fußgänger (Mass AI), Kampf (Gameplay Ability System) und mehr.
+- **Kostenlos:** Standardmäßig läuft eine KI direkt auf deiner Grafikkarte (über Ollama, Modell Qwen3 8B). Es gibt keine Kosten, kein Konto und keine Daten nach außen.
+- **Optional stärker:** Für schwierige Aufgaben kannst du auf Claude umschalten (Fable, Opus, Sonnet oder Haiku). Das kostet Geld und braucht einen API-Schlüssel.
 
 ## Herunterladen
 
-1. Auf GitHub zu **Releases** (rechts) gehen. Alternativ unter **Actions** den letzten erfolgreichen Lauf öffnen und dort unten bei *Artifacts* herunterladen.
+1. Auf GitHub zu **Releases** gehen und die neueste Version nehmen.
 2. Windows: `UnrealForge-Setup-….exe` (Installer) oder `UnrealForge-Portable-….exe` (ohne Installation).
    Mac: `.dmg`. Linux: `.AppImage`.
 3. Windows zeigt eventuell „Der Computer wurde durch Windows geschützt“, weil die App nicht signiert ist. Dann auf **Weitere Informationen → Trotzdem ausführen** klicken.
 
-## Was du brauchst
+## Einrichten (kostenlose Variante)
 
-- **Anthropic-API-Schlüssel**: unter <https://console.anthropic.com> → *API Keys*. Die Nutzung wird pro Token abgerechnet. Fable 5.2 kostet $8 pro Million Eingabe-Tokens und $40 pro Million Ausgabe-Tokens. Ein großer Bau-Auftrag kann einige Dollar kosten. Die App zeigt den Verbrauch unten links an.
-- **Unreal Engine 5** (kostenlos im Epic Games Launcher), plus **Visual Studio 2022** mit „Spieleentwicklung mit C++“, damit C++ kompiliert werden kann.
-  Ohne Engine legt die App die Projekte trotzdem an. Sie kann sie dann aber weder kompilieren noch per Skript befüllen.
+1. **Ollama** installieren: <https://ollama.com/download> (gratis). Danach läuft es im Hintergrund.
+2. Unreal Forge starten. Links unter **„KI“** auf **„Modell herunterladen“** klicken. Das passiert einmalig und lädt etwa 5 GB.
+3. **Unreal Engine 5** über den Epic Games Launcher installieren, außerdem **Visual Studio 2022** mit „Spieleentwicklung mit C++“. Beides ist kostenlos.
+4. Dein Spiel beschreiben und auf **„Bauen ▶“** klicken.
 
-## So benutzt du es
+**Welches Modell für welche Grafikkarte?**
+| Grafikspeicher | Modell | Kontextgröße |
+|---|---|---|
+| 8 GB (z. B. RTX 5060) | Qwen3 8B (Standard) | 12k |
+| 12–16 GB | Qwen3 14B | 16k |
+| 24 GB+ | Qwen3 14B | 32k |
 
-1. App starten und den API-Schlüssel in den Einstellungen eintragen. Der Unreal-Pfad wird automatisch gesucht.
-2. Dein Spiel beschreiben, z. B. *„Open-World-Stadt im Stil von Miami mit Autos, Fußgängern, Tag-Nacht-Zyklus und Polizei-System“*.
-3. Unreal Forge legt das Projekt an und schreibt `GAME_PLAN.md`. Danach baut es System für System, kompiliert dabei und behebt Fehler.
-4. Weitere Aufträge geben: „Füg ein Waffensystem hinzu“, „Mach die Stadt doppelt so groß“ … Der Verlauf wird pro Projekt gespeichert.
-5. Mit „öffne das Projekt in Unreal“ startet der Editor, und du kannst spielen.
+Läuft es zu langsam, stell die Kontextgröße in den Einstellungen auf 8k. Unreal und die KI teilen sich die Grafikkarte, deshalb schließt du den Unreal Editor am besten, während die KI baut.
+
+## Wie die App „lernt“
+
+Die App trainiert das Modell nicht neu, das wäre auf einem PC unmöglich. Sie nutzt stattdessen ein **Langzeitgedächtnis** (`memory.json` im App-Ordner):
+- Repariert die KI einen Build-Fehler, speichert die App automatisch den Fehler zusammen mit den geänderten Dateien.
+- Die KI kann sich selbst Erkenntnisse merken (`remember`), zum Beispiel funktionierende Lösungen oder deine Vorlieben.
+- Vor jedem Auftrag werden passende Erinnerungen automatisch mitgegeben.
+
+So wird sie mit jedem Projekt besser. Unter **„Gedächtnis → anzeigen“** siehst du, was sie gelernt hat.
+
+## Internet-Recherche
+
+Die KI kann kostenlos im Web suchen (DuckDuckGo) und Seiten lesen, zum Beispiel die Unreal-Doku, Foren oder Tutorials, wenn sie bei einem Fehler nicht weiterkommt.
 
 ## Ehrlich zum Umfang
 
-Ein Spiel wie GTA VI haben über tausend Leute fast zehn Jahre lang gebaut, mit Millionen von handgemachten Modellen, Animationen und Sprachaufnahmen. Diese **Inhalte** kann keine KI heute auf Knopfdruck erzeugen.
-
-Was Unreal Forge kann:
-- die komplette **Technik und Spiellogik** bauen,
-- die Welt **prozedural generieren**,
-- Platzhalter-Inhalte setzen,
-- das Spiel über viele Sitzungen hinweg Stück für Stück erweitern.
-
-Für realistische Optik empfiehlt die KI echte Assets: Quixel Megascans, MetaHuman und Fab. Sie zeigt dir auch, wie du sie einbindest.
+- **Lokales 8B-Modell:** Es ist gratis, aber viel schwächer als Claude Fable. Kleine, klar beschriebene Schritte funktionieren gut, zum Beispiel „Füg ein Auto hinzu, in das der Spieler einsteigen kann“. Bei großen, komplexen Systemen macht es mehr Fehler. Dann hilft es, für diesen Schritt auf Claude umzuschalten.
+- **Ein Spiel wie GTA VI:** Daran haben über tausend Leute fast zehn Jahre gearbeitet, mit Millionen handgemachter Modelle, Animationen und Sprachaufnahmen. Diese **Inhalte** kann keine KI heute auf Knopfdruck erzeugen. Unreal Forge baut die Technik und die Spiellogik, generiert die Welt prozedural und erweitert das Spiel Schritt für Schritt. Für realistische Optik empfiehlt es Quixel Megascans, MetaHuman und Fab.
 
 ## Entwickeln
 
 ```bash
 npm install
 npm start          # App starten
-npm test           # Selbsttest
+npm test           # Tests (inkl. simuliertem Ollama-Server)
 npm run dist       # Installer für das aktuelle Betriebssystem bauen
 ```
 
-Bei jedem Push baut GitHub Actions automatisch die Versionen für Windows, Mac und Linux und veröffentlicht sie als Release (`.github/workflows/build.yml`).
+Bei jedem Push baut GitHub Actions die Versionen für Windows, Mac und Linux und veröffentlicht sie als Release.
 
 ### Aufbau
-- `src/main.js`: Electron-Hauptprozess, Einstellungen (API-Schlüssel verschlüsselt per `safeStorage`)
-- `src/agent.js`: Agent-Schleife mit Claude Fable 5.2: Streaming, adaptives Denken, automatischer Modell-Fallback bei Ablehnung, Prompt-Caching
-- `src/tools.js`: Werkzeuge: Dateien lesen und schreiben, Projekt anlegen, kompilieren, Python im Unreal Editor ausführen, Befehle ausführen (nur nach Bestätigung), Web-Suche
+- `src/main.js`: Electron-Hauptprozess, Einstellungen, Wahl der KI
+- `src/localAgent.js`: kostenlose lokale KI über Ollama (Werkzeugaufrufe, Kontext-Verwaltung für kleine Modelle)
+- `src/agent.js`: optionale Claude-Anbindung (Streaming, adaptives Denken, automatischer Fallback)
+- `src/tools.js`: Werkzeuge: Projekt anlegen, Dateien, Kompilieren, Editor-Python, Befehle (nur nach Bestätigung), Web, Gedächtnis
+- `src/memory.js`: Langzeitgedächtnis mit Deutsch/Englisch-Synonymen
+- `src/web.js`: kostenlose Suche und Seiten-Abruf
 - `src/unreal.js`: Engine-Erkennung, Projektvorlage, Build-Aufrufe
 - `src/prompt.js`: Fachwissen und Arbeitsweise der KI
 - `src/renderer/`: Oberfläche

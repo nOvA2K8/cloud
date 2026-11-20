@@ -1,7 +1,7 @@
 {
   "name": "unreal-forge",
-  "version": "0.1.0",
-  "description": "KI-Desktop-App, die mit Claude Fable Unreal-Engine-5-Spiele baut",
+  "version": "0.2.0",
+  "description": "KI-Desktop-App, die Unreal-Engine-5-Spiele baut – kostenlos mit lokaler KI oder optional mit Claude",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",

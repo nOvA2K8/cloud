@@ -143,6 +143,30 @@ ipcMain.handle('agent:send', async (_e, text) => {
   }
 });
 ipcMain.handle('agent:stop', () => agent && agent.abort());
+// Direkt kompilieren – ohne KI, damit das echte Ergebnis sichtbar ist.
+ipcMain.handle('project:build', async () => {
+  try {
+    const a = getAgent();
+    emit('tool', { name: 'build_project', input: {} });
+    const out = String(await a.toolCtx.run('build_project', {}));
+    const ok = /BUILD ERFOLGREICH/.test(out);
+    emit('tool_result', { name: 'build_project', ok, text: out.split('\n').slice(-25).join('\n') });
+    emit('status', ok ? '✅ Build erfolgreich!' : '❌ Build fehlgeschlagen – Details im Kasten oben und im Build-Log. Schick ein Foto davon, falls du nicht weiterkommst.');
+  } catch (e) {
+    emit('error', e.message);
+  }
+  emit('memory', null);
+  emit('done', null);
+});
+// Gesprächsverlauf des aktiven Projekts leeren (Dateien bleiben).
+ipcMain.handle('chat:clear', () => {
+  try {
+    const a = getAgent();
+    a.messages = [];
+    a.saveHistory();
+  } catch { /* kein Agent */ }
+  return true;
+});
 
 app.whenReady().then(() => {
   memory = new Memory(path.join(app.getPath('userData'), 'memory.json'));

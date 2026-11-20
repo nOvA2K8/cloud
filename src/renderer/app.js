@@ -122,6 +122,7 @@ window.forge.onAgent(({ event, payload }) => {
     case 'status': el('status', payload); break;
     case 'error': el('error', '⚠ ' + payload); break;
     case 'project': refreshProject(); break;
+    case 'memory': refreshMemory(); break;
     case 'usage':
       totals.in += (payload.input_tokens || 0) + (payload.cache_read_input_tokens || 0) + (payload.cache_creation_input_tokens || 0);
       totals.out += payload.output_tokens || 0;
@@ -182,6 +183,21 @@ $('btnOpen').onclick = async () => { if (busy) return; const p = await window.fo
 $('btnReveal').onclick = () => window.forge.revealProject();
 $('btnStop').onclick = () => window.forge.stop();
 $('btnLog').onclick = () => $('logbar').classList.toggle('open');
+$('btnBuild').onclick = async () => {
+  if (busy) return;
+  if (!(await window.forge.currentProject())) { el('error', '⚠ Kein aktives Projekt.'); return; }
+  setBusy(true);
+  $('logbar').classList.add('open');
+  el('status', 'Kompiliere … der erste Build kann 10–30 Minuten dauern. Fortschritt im Build-Log unten.');
+  window.forge.build();
+};
+$('btnClear').onclick = async () => {
+  if (busy) return;
+  if (!confirm('Gesprächsverlauf für dieses Projekt löschen? Deine Projektdateien bleiben erhalten.')) return;
+  await window.forge.clearChat();
+  chat.innerHTML = '';
+  el('status', 'Chat geleert. Die KI fängt frisch an – sie liest GAME_PLAN.md, um den Stand zu kennen.');
+};
 $('composer').addEventListener('submit', (e) => { e.preventDefault(); send($('input').value); });
 $('input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send($('input').value); } });
 document.querySelectorAll('.ex').forEach((b) => (b.onclick = () => send(b.textContent)));

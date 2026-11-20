@@ -161,6 +161,15 @@ ipcMain.handle('project:build', async () => {
   emit('memory', null);
   emit('done', null);
 });
+// Projekt direkt im passenden Unreal Editor öffnen (ohne Dateizuordnung in Windows).
+ipcMain.handle('project:openUnreal', async () => {
+  try {
+    const msg = await getAgent().toolCtx.run('open_in_unreal', {});
+    emit('status', '🎮 ' + msg + ' Das erste Öffnen kann 10–20 Minuten dauern (Shader werden berechnet).');
+  } catch (e) {
+    emit('error', e.message);
+  }
+});
 // Gesprächsverlauf des aktiven Projekts leeren (Dateien bleiben).
 ipcMain.handle('chat:clear', () => {
   try {

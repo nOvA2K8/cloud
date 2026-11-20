@@ -306,7 +306,9 @@ class ToolContext {
         const eng = this.engine();
         const up = unreal.findUproject(this.resolve('.'));
         if (!up) throw new Error('Keine .uproject-Datei im Projekt');
-        require('child_process').spawn(eng.editor, [up], { detached: true, stdio: 'ignore' }).unref();
+        const child = require('child_process').spawn(eng.editor, [up], { detached: true, stdio: 'ignore' });
+        child.on('error', (e) => this.onLog && this.onLog(`Unreal-Start fehlgeschlagen: ${e.message}\n`));
+        child.unref();
         return 'Unreal Editor wird gestartet.';
       }
       case 'web_search':

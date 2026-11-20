@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('forge', {
   send: (text) => ipcRenderer.invoke('agent:send', text),
   stop: () => ipcRenderer.invoke('agent:stop'),
   build: () => ipcRenderer.invoke('project:build'),
+  openUnreal: () => ipcRenderer.invoke('project:openUnreal'),
   clearChat: () => ipcRenderer.invoke('chat:clear'),
   onAgent: (cb) => ipcRenderer.on('agent', (_e, msg) => cb(msg)),
 });

@@ -181,6 +181,10 @@ $('btnSettings').onclick = openSettings;
 $('btnNew').onclick = async () => { if (busy) return; await window.forge.newProject(); location.reload(); };
 $('btnOpen').onclick = async () => { if (busy) return; const p = await window.forge.openProject(); if (p) { await refreshProject(); renderHistory(await window.forge.history()); } };
 $('btnReveal').onclick = () => window.forge.revealProject();
+$('btnUnreal').onclick = async () => {
+  if (!(await window.forge.currentProject())) { el('error', '⚠ Kein aktives Projekt.'); return; }
+  window.forge.openUnreal();
+};
 $('btnStop').onclick = () => window.forge.stop();
 $('btnLog').onclick = () => $('logbar').classList.toggle('open');
 $('btnBuild').onclick = async () => {

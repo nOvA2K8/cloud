@@ -7,13 +7,15 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { SYSTEM_PROMPT } = require('./prompt');
 const { TOOLS, validateInput } = require('./tools');
 
-const MODEL = 'claude-fable-5-2';
+const DEFAULT_MODEL = 'claude-fable-5-2';
 const MAX_TURNS = 200; // Sicherheitsgrenze pro Auftrag
 
 class Agent {
-  constructor({ apiKey, effort, toolCtx, emit }) {
+  constructor({ apiKey, model, effort, toolCtx, memory, emit }) {
     this.client = new Anthropic({ apiKey, timeout: 30 * 60 * 1000 });
+    this.model = model || DEFAULT_MODEL;
     this.effort = effort || 'high';
+    this.memory = memory;
     this.toolCtx = toolCtx;
     this.emit = emit; // (event, payload) => void, an die Oberfläche
     this.messages = [];
@@ -40,6 +42,20 @@ class Agent {
     fs.writeFileSync(f, JSON.stringify(this.messages));
   }
 
+  displayHistory() {
+    const out = [];
+    for (const m of this.messages) {
+      if (m.role === 'user' && typeof m.content === 'string') out.push({ type: 'user', text: m.content.split('\n\n(Aus deinem Gedächtnis')[0] });
+      if (m.role === 'assistant' && Array.isArray(m.content)) {
+        for (const b of m.content) {
+          if (b.type === 'text' && b.text.trim()) out.push({ type: 'assistant', text: b.text });
+          if (b.type === 'tool_use') out.push({ type: 'tool', text: b.name });
+        }
+      }
+    }
+    return out;
+  }
+
   abort() {
     this.aborted = true;
     try { this.currentStream && this.currentStream.abort(); } catch { /* egal */ }
@@ -49,7 +65,9 @@ class Agent {
   async send(userText) {
     this.aborted = false;
     // Verlauf wird nur angehängt, nie umgeschrieben (Thinking-Blöcke bleiben gültig).
-    this.messages.push({ role: 'user', content: userText });
+    const hints = this.memory ? this.memory.recall(userText, 5) : [];
+    const content = hints.length ? `${userText}\n\n(Aus deinem Gedächtnis, falls hilfreich:\n${this.memory.format(hints)})` : userText;
+    this.messages.push({ role: 'user', content });
 
     for (let turn = 0; turn < MAX_TURNS && !this.aborted; turn++) {
       const response = await this.streamTurn();
@@ -119,11 +137,14 @@ class Agent {
   async streamTurn() {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        // Bei Ablehnung automatisch passendes Ersatzmodell (Haiku hat keinen Server-Fallback).
+        const fallback = this.model.startsWith('claude-haiku')
+          ? {}
+          : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' };
         const stream = this.client.beta.messages.stream({
-          model: MODEL,
+          model: this.model,
           max_tokens: 64000,
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default', // bei Ablehnung automatisch passendes Ersatzmodell
+          ...fallback,
           thinking: { type: 'adaptive', display: 'summarized' },
           output_config: { effort: this.effort },
           cache_control: { type: 'ephemeral' },
@@ -163,4 +184,4 @@ function summarize(input) {
   return o;
 }
 
-module.exports = { Agent, MODEL };
+module.exports = { Agent, DEFAULT_MODEL };

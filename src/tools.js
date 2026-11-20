@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const unreal = require('./unreal');
+const web = require('./web');
 
 const TOOL_DEFS = [
   {
@@ -102,13 +103,59 @@ const TOOL_DEFS = [
     description: 'Öffnet das aktive Projekt im Unreal Editor (mit Fenster), damit der Nutzer es sehen und spielen kann.',
     input_schema: { type: 'object', properties: {}, additionalProperties: false },
   },
+  {
+    name: 'web_search',
+    description: 'Kostenlose Internetsuche (DuckDuckGo). Nutze sie für aktuelle Unreal-Doku, Tutorials, Forenlösungen zu Build-Fehlern und um zu recherchieren, wie andere Spiele etwas umsetzen.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'Suchbegriffe, am besten auf Englisch' } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'fetch_url',
+    description: 'Lädt eine Webseite und gibt ihren Text zurück (z.B. eine Doku-Seite aus web_search).',
+    input_schema: {
+      type: 'object',
+      properties: { url: { type: 'string' } },
+      required: ['url'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'remember',
+    description: 'Speichert eine Erkenntnis dauerhaft im Gedächtnis (über alle Projekte hinweg): z.B. Build-Fehler + Lösung, funktionierende Code-Muster, Vorlieben des Nutzers. Kurz und konkret formulieren.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'Die Erkenntnis, z.B. "Fehler C2065 bei UChaosVehicleMovementComponent: Modul ChaosVehicles in Build.cs eintragen."' },
+        tags: { type: 'string', description: 'Stichworte, z.B. "build, chaos, vehicles"' },
+      },
+      required: ['text'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'recall',
+    description: 'Durchsucht das Gedächtnis nach früheren Erkenntnissen zu einem Thema. Vor schwierigen Aufgaben und bei Build-Fehlern zuerst hier nachsehen.',
+    input_schema: {
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query'],
+      additionalProperties: false,
+    },
+  },
 ];
 
-// Client-Tools streamen ihre Eingaben sofort (große Dateien), dazu Web-Suche für aktuelle UE-Doku.
-const TOOLS = [
-  ...TOOL_DEFS.map((t) => ({ ...t, eager_input_streaming: true })),
-  { type: 'web_search_20260209', name: 'web_search', max_uses: 5 },
-];
+// Client-Tools streamen ihre Eingaben sofort (große Dateien).
+const TOOLS = TOOL_DEFS.map((t) => ({ ...t, eager_input_streaming: true }));
+
+// Gleiche Werkzeuge im Format für lokale Modelle (Ollama / OpenAI-Funktionsformat).
+const LOCAL_TOOLS = TOOL_DEFS.map((t) => ({
+  type: 'function',
+  function: { name: t.name, description: t.description, parameters: t.input_schema },
+}));
 
 /** Prüft Pflichtfelder und Typen (Eingaben werden ungepuffert gestreamt und deshalb nicht serverseitig validiert). */
 function validateInput(name, input) {
@@ -129,8 +176,26 @@ function validateInput(name, input) {
 }
 
 class ToolContext {
-  constructor({ getSettings, getProjectRoot, setProjectRoot, onLog, askApproval }) {
-    Object.assign(this, { getSettings, getProjectRoot, setProjectRoot, onLog, askApproval });
+  constructor({ getSettings, getProjectRoot, setProjectRoot, onLog, askApproval, memory }) {
+    Object.assign(this, { getSettings, getProjectRoot, setProjectRoot, onLog, askApproval, memory });
+    this.touched = new Set();
+    this.lastBuildErrors = null;
+  }
+
+  /** Automatisches Lernen: Wird ein fehlgeschlagener Build repariert, landet Fehler + betroffene Dateien im Gedächtnis. */
+  learnFromBuild(r) {
+    if (r.code !== 0) {
+      const errs = r.output.split('\n').filter((l) => /error [A-Z]*\d+|: error|fatal error/i.test(l)).map((l) => l.trim().slice(0, 300));
+      this.lastBuildErrors = errs.slice(0, 3);
+      this.touched = new Set();
+      return;
+    }
+    if (this.lastBuildErrors && this.lastBuildErrors.length && this.memory) {
+      const files = [...this.touched].slice(0, 6).join(', ') || 'unbekannt';
+      this.memory.remember(`Build-Fehler: ${this.lastBuildErrors.join(' | ')} -> behoben durch Änderungen an: ${files}`, 'build, auto');
+    }
+    this.lastBuildErrors = null;
+    this.touched = new Set();
   }
 
   resolve(rel) {
@@ -181,6 +246,7 @@ class ToolContext {
         const p = this.resolve(input.path);
         fs.mkdirSync(path.dirname(p), { recursive: true });
         fs.writeFileSync(p, input.content);
+        this.touched.add(input.path);
         return `Geschrieben: ${input.path} (${input.content.length} Zeichen)`;
       }
       case 'edit_file': {
@@ -189,6 +255,7 @@ class ToolContext {
         const count = txt.split(input.old_text).length - 1;
         if (count !== 1) throw new Error(`old_text kommt ${count}-mal vor (muss genau 1 sein)`);
         fs.writeFileSync(p, txt.replace(input.old_text, () => input.new_text));
+        this.touched.add(input.path);
         return `Geändert: ${input.path}`;
       }
       case 'build_project': {
@@ -199,6 +266,7 @@ class ToolContext {
         const r = await unreal.runProcess(eng.build,
           [`${proj}Editor`, eng.platform, 'Development', `-Project=${up}`, '-WaitMutex', '-NoHotReloadFromIDE'],
           { cwd: eng.dir, onOutput: this.onLog, shell: unreal.isWin });
+        this.learnFromBuild(r);
         return `Exit-Code ${r.code} (${r.code === 0 ? 'BUILD ERFOLGREICH' : 'BUILD FEHLGESCHLAGEN'})\n${r.output}`;
       }
       case 'run_editor_python': {
@@ -228,10 +296,22 @@ class ToolContext {
         require('child_process').spawn(eng.editor, [up], { detached: true, stdio: 'ignore' }).unref();
         return 'Unreal Editor wird gestartet.';
       }
+      case 'web_search':
+        return await web.webSearch(input.query);
+      case 'fetch_url':
+        return await web.fetchUrl(input.url);
+      case 'remember':
+        if (!this.memory) throw new Error('Kein Gedächtnis verfügbar');
+        return this.memory.remember(input.text, input.tags || '');
+      case 'recall': {
+        if (!this.memory) throw new Error('Kein Gedächtnis verfügbar');
+        const hits = this.memory.recall(input.query, 8);
+        return hits.length ? this.memory.format(hits) : 'Nichts dazu im Gedächtnis.';
+      }
       default:
         throw new Error(`Unbekanntes Werkzeug: ${name}`);
     }
   }
 }
 
-module.exports = { TOOLS, ToolContext, validateInput };
+module.exports = { TOOLS, LOCAL_TOOLS, TOOL_DEFS, ToolContext, validateInput };

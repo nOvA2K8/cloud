@@ -33,7 +33,7 @@ const { TOOLS, ToolContext, validateInput } = require('../src/tools');
   assert.strictEqual(validateInput('write_file', { path: 'a' }), 'Pflichtfeld fehlt: content');
   assert.strictEqual(validateInput('write_file', { path: 'a', content: 1 }), 'content muss Text sein');
   assert.strictEqual(validateInput('read_file', { path: 'a' }), null);
-  assert.ok(TOOLS.every((t) => t.type || t.eager_input_streaming));
+  assert.ok(TOOLS.every((t) => t.eager_input_streaming));
 
   require('../src/agent'); // lädt das SDK
   console.log('Alle Tests bestanden.');

@@ -32,23 +32,47 @@ async function refreshEngine() {
   $('engine').textContent = e.length ? `UE ${e[0].version} gefunden` : 'nicht gefunden – Pfad in Einstellungen setzen (Projekte werden trotzdem erstellt)';
 }
 
-function renderHistory(messages) {
+function renderHistory(items) {
   chat.innerHTML = '';
-  for (const m of messages) {
-    if (m.role === 'user' && typeof m.content === 'string') el('msg user', m.content);
-    if (m.role === 'assistant' && Array.isArray(m.content)) {
-      for (const b of m.content) {
-        if (b.type === 'text' && b.text.trim()) el('msg assistant', b.text);
-        if (b.type === 'tool_use') { const t = el('tool'); t.innerHTML = `<span class="name"></span>`; t.firstChild.textContent = '⚒ ' + b.name; }
-      }
-    }
+  for (const it of items) {
+    if (it.type === 'user') el('msg user', it.text);
+    else if (it.type === 'assistant') el('msg assistant', it.text);
+    else if (it.type === 'tool') { const t = el('tool'); const n = document.createElement('span'); n.className = 'name'; n.textContent = '⚒ ' + it.text; t.appendChild(n); }
   }
+}
+
+async function refreshAi() {
+  const s = await window.forge.getSettings();
+  $('btnPull').hidden = true; $('btnOllama').hidden = true;
+  if (s.provider === 'claude') {
+    $('aiStatus').textContent = `${s.claudeModel.replace('claude-', 'Claude ').replace(/-/g, ' ')} – ${s.hasKey ? 'bereit (kostenpflichtig)' : 'API-Schlüssel fehlt'}`;
+    return;
+  }
+  const st = await window.forge.ollamaStatus();
+  if (!st.running) {
+    $('aiStatus').textContent = 'Lokale KI: Ollama läuft nicht. Installieren und starten, dann App neu öffnen.';
+    $('btnOllama').hidden = false;
+  } else if (!st.hasModel) {
+    $('aiStatus').textContent = `Lokale KI: Modell ${st.model} noch nicht heruntergeladen (einmalig ~5 GB).`;
+    $('btnPull').hidden = false;
+  } else {
+    $('aiStatus').textContent = `Lokale KI: ${st.model} – bereit (kostenlos)`;
+  }
+}
+
+async function refreshMemory() {
+  const m = await window.forge.memoryInfo();
+  $('memInfo').textContent = `${m.count} Erkenntnisse gespeichert`;
 }
 
 async function send(text) {
   if (busy || !text.trim()) return;
   const s = await window.forge.getSettings();
-  if (!s.hasKey) { openSettings(); return; }
+  if (s.provider === 'claude' && !s.hasKey) { openSettings(); return; }
+  if (s.provider === 'local') {
+    const st = await window.forge.ollamaStatus();
+    if (!st.running || !st.hasModel) { el('error', '⚠ Die lokale KI ist noch nicht bereit – siehe Hinweis links unter „KI“.'); return; }
+  }
   el('msg user', text);
   $('input').value = '';
   curText = null; curThinking = null;
@@ -103,28 +127,53 @@ window.forge.onAgent(({ event, payload }) => {
       totals.out += payload.output_tokens || 0;
       $('usage').textContent = `Tokens diese Sitzung: ${Math.round(totals.in / 1000)}k rein · ${Math.round(totals.out / 1000)}k raus`;
       break;
-    case 'done': setBusy(false); refreshProject(); break;
+    case 'pull': {
+      const p = payload;
+      const pct = p.total ? ` ${Math.round((p.completed || 0) / p.total * 100)} %` : '';
+      $('aiStatus').textContent = `Download: ${p.status}${pct}`;
+      if (p.status === 'fertig' || String(p.status).startsWith('Fehler')) { $('btnPull').disabled = false; if (p.status === 'fertig') refreshAi(); }
+      break;
+    }
+    case 'done': setBusy(false); refreshProject(); refreshMemory(); break;
   }
 });
 
+function toggleProviderBoxes() {
+  const local = $('sProvider').value === 'local';
+  $('localBox').hidden = !local;
+  $('claudeBox').hidden = local;
+}
+
 async function openSettings() {
   const s = await window.forge.getSettings();
+  $('sProvider').value = s.provider;
+  $('sLocalModel').value = s.localModel;
+  $('sNumCtx').value = String(s.numCtx);
+  $('sClaudeModel').value = s.claudeModel;
   $('sKey').value = s.apiKey;
   $('sEngine').value = s.enginePath;
   $('sProjects').value = s.projectsDir;
   $('sEffort').value = s.effort;
+  toggleProviderBoxes();
   $('settings').showModal();
 }
+$('sProvider').onchange = toggleProviderBoxes;
 
 $('settingsForm').addEventListener('submit', async (e) => {
   if (e.submitter && e.submitter.value === 'save') {
     await window.forge.setSettings({
-      apiKey: $('sKey').value.trim(), enginePath: $('sEngine').value.trim(),
-      projectsDir: $('sProjects').value.trim(), effort: $('sEffort').value,
+      provider: $('sProvider').value, localModel: $('sLocalModel').value, numCtx: Number($('sNumCtx').value),
+      claudeModel: $('sClaudeModel').value, apiKey: $('sKey').value.trim(),
+      enginePath: $('sEngine').value.trim(), projectsDir: $('sProjects').value.trim(), effort: $('sEffort').value,
     });
     refreshEngine();
+    refreshAi();
+    renderHistory(await window.forge.history());
   }
 });
+$('btnPull').onclick = () => { $('btnPull').disabled = true; window.forge.ollamaPull(); };
+$('btnOllama').onclick = () => window.forge.openUrl('https://ollama.com/download');
+$('btnMem').onclick = () => window.forge.memoryOpen();
 $('pickEngine').onclick = async () => { const d = await window.forge.pickDir(); if (d) $('sEngine').value = d; };
 $('pickProjects').onclick = async () => { const d = await window.forge.pickDir(); if (d) $('sProjects').value = d; };
 $('btnSettings').onclick = openSettings;
@@ -140,8 +189,8 @@ document.querySelectorAll('.ex').forEach((b) => (b.onclick = () => send(b.textCo
 (async () => {
   await refreshProject();
   refreshEngine();
+  refreshAi();
+  refreshMemory();
   const h = await window.forge.history();
   if (h.length) renderHistory(h);
-  const s = await window.forge.getSettings();
-  if (!s.hasKey) openSettings();
 })();

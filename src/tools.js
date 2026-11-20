@@ -175,6 +175,20 @@ function validateInput(name, input) {
   return null;
 }
 
+/** Fasst die Editor-Ausgabe zusammen: nur was nach FORGE_BEGIN kam, ohne Start-Rauschen. */
+function summarizePythonRun(r) {
+  const out = r.output;
+  const start = out.lastIndexOf('FORGE_BEGIN');
+  const body = start >= 0 ? out.slice(start) : out;
+  const lines = body.split('\n').filter((l) => /FORGE_|\[Forge\]|Traceback|Error|error:|  File "|^\s+\S|Warning: /.test(l) && !/Running start-up script|registering <class/.test(l));
+  const ok = /FORGE_OK/.test(body);
+  const failed = /FORGE_ERROR/.test(body);
+  const status = ok ? 'SKRIPT ERFOLGREICH' : failed ? 'SKRIPT-FEHLER (siehe Traceback – korrigieren und erneut ausführen)'
+    : start < 0 ? 'Skript wurde NICHT gestartet (Editor-Problem, siehe Log)' : 'Skript abgebrochen';
+  const text = lines.join('\n').slice(-12000) || out.slice(-6000);
+  return `${status} (Exit-Code ${r.code})\n${text}`;
+}
+
 class ToolContext {
   constructor({ getSettings, getProjectRoot, setProjectRoot, onLog, askApproval, memory }) {
     Object.assign(this, { getSettings, getProjectRoot, setProjectRoot, onLog, askApproval, memory });
@@ -286,15 +300,30 @@ class ToolContext {
         const eng = this.engine();
         const up = unreal.findUproject(this.resolve('.'));
         if (!up) throw new Error('Keine .uproject-Datei im Projekt');
-        const fname = path.basename(input.filename).replace(/[^A-Za-z0-9_.-]/g, '_');
-        const scriptPath = this.resolve(path.join('Content', 'Python', fname.endsWith('.py') ? fname : fname + '.py'));
-        fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+        const pyDir = this.resolve(path.join('Content', 'Python'));
+        fs.mkdirSync(pyDir, { recursive: true });
+        // Baukasten-Bibliothek immer aktuell ins Projekt legen (import forge).
+        fs.writeFileSync(path.join(pyDir, 'forge.py'), fs.readFileSync(path.join(__dirname, 'unreal_py', 'forge.py'), 'utf8'));
+        const fname = path.basename(input.filename).replace(/[^A-Za-z0-9_.-]/g, '_').replace(/^forge\.py$/, 'forge_script.py');
+        const scriptPath = path.join(pyDir, fname.endsWith('.py') ? fname : fname + '.py');
         fs.writeFileSync(scriptPath, input.script);
+        // Wrapper: klare Marker + vollständiger Python-Fehler statt Log-Rauschen.
+        const runner = path.join(pyDir, '_forge_runner.py');
+        fs.writeFileSync(runner, [
+          'import runpy, traceback, unreal',
+          "unreal.log('FORGE_BEGIN')",
+          'try:',
+          `    runpy.run_path(${JSON.stringify(scriptPath)}, run_name='__main__')`,
+          "    unreal.log('FORGE_OK')",
+          'except Exception:',
+          "    unreal.log_error('FORGE_ERROR\\n' + traceback.format_exc())",
+          '',
+        ].join('\n'));
+        // -nullrhi: keine Grafikkarte belegen, damit die lokale KI ihren Grafikspeicher behält.
         const r = await unreal.runProcess(eng.editorCmd,
-          [up, '-run=pythonscript', `-script=${scriptPath}`, '-unattended', '-nopause', '-nosplash', '-stdout', '-FullStdOutLogOutput'],
+          [up, '-run=pythonscript', `-script=${runner}`, '-unattended', '-nopause', '-nosplash', '-nullrhi', '-stdout', '-FullStdOutLogOutput'],
           { cwd: path.dirname(up), onOutput: this.onLog });
-        const relevant = r.output.split('\n').filter((l) => /LogPython|Error|error|Warning|Traceback/.test(l)).join('\n');
-        return `Exit-Code ${r.code}\n${relevant.slice(-20000) || r.output.slice(-8000)}`;
+        return summarizePythonRun(r);
       }
       case 'run_command': {
         const ok = await this.askApproval(`Claude möchte diesen Befehl ausführen:\n\n${input.command}`);

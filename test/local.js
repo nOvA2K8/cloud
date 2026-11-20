@@ -106,3 +106,29 @@ const { Memory } = require('../src/memory');
 
   console.log('Lokale KI, Gedächtnis, Lernen und Suche: alle Tests bestanden.');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// --- run_editor_python mit forge-Bibliothek gegen simulierten Editor ---
+(async () => {
+  if (process.platform === 'win32') return;
+  const { execSync } = require('child_process');
+  try { execSync('python3 --version', { stdio: 'ignore' }); } catch { console.log('python3 fehlt – übersprungen'); return; }
+  const unreal = require('../src/unreal');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'forge-py-'));
+  const r = unreal.scaffoldProject(tmp, 'PyTest', '5.8', '');
+  const fake = path.join(__dirname, 'fake_unreal', 'UnrealEditor-Cmd');
+  const ctx = new ToolContext({ getSettings: () => ({}), getProjectRoot: () => r.root, setProjectRoot: () => {}, onLog: () => {}, askApproval: async () => false });
+  ctx.engine = () => ({ dir: tmp, version: '5.8', editorCmd: fake, editor: fake });
+  const ok = await ctx.run('run_editor_python', { filename: 'airbase.py', script: [
+    'import forge',
+    'forge.new_level("Airbase")', 'forge.sky()', 'forge.ground(4000)',
+    'forge.box("Runway", x=0, y=0, z=0, length=3000, width=60, height=0.3, color="#3a3a3a")',
+    'forge.cylinder("Tank", x=1, y=2, z=0, diameter=10, height=12, color="#999999")',
+    'forge.player_start()', 'forge.save()'].join('\n') });
+  assert.ok(ok.startsWith('SKRIPT ERFOLGREICH'), ok);
+  assert.ok(ok.includes('[Forge] Level angelegt: /Game/Maps/Airbase'), ok);
+  assert.ok(!ok.includes('Running start-up script'), 'Start-Rauschen gefiltert');
+  assert.ok(fs.existsSync(path.join(r.root, 'Content', 'Python', 'forge.py')));
+  const bad = await ctx.run('run_editor_python', { filename: 'bad.py', script: 'import unreal\nunreal.StaticMesh.load("x")\nraise ValueError("kaputt")' });
+  assert.ok(bad.startsWith('SKRIPT-FEHLER') && bad.includes('ValueError: kaputt'), bad);
+  console.log('Editor-Python mit forge: Test bestanden.');
+})().catch((e) => { console.error(e); process.exit(1); });

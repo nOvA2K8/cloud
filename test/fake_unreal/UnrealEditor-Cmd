@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+# Simulierter Editor: führt -script=... mit dem Ersatz-unreal-Modul aus.
+import sys, os, runpy
+here = os.path.dirname(os.path.abspath(__file__))
+script = [a for a in sys.argv if a.startswith('-script=')][0][8:]
+assert '-nullrhi' in sys.argv, 'nullrhi fehlt'
+sys.path[:0] = [here, os.path.dirname(script)]
+print('LogPython: Display: Running start-up script C:/x/init_unreal.py')
+runpy.run_path(script, run_name='__main__')
+import unreal
+print('CALLS', len(unreal.calls), [c[0] for c in unreal.calls].count('spawn'))

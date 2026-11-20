@@ -93,7 +93,16 @@ class LocalAgent {
 
     let emptyRetries = 0;
     for (let turn = 0; turn < MAX_TURNS && !this.aborted; turn++) {
-      const msg = await this.chatTurn();
+      let msg;
+      try {
+        msg = await this.chatTurn();
+      } catch (e) {
+        // Verbindung zu Ollama abgerissen (oft: Grafikspeicher knapp) – einmal neu versuchen.
+        if (this.aborted || !/terminated|fetch failed|ECONNRESET|socket/i.test(String(e && (e.message + (e.cause ? e.cause.message : ''))))) throw e;
+        this.emit('status', 'Verbindung zur lokalen KI abgebrochen – versuche es erneut … (Tipp: Unreal Editor schließen, damit genug Grafikspeicher frei ist)');
+        await new Promise((r) => setTimeout(r, 4000));
+        msg = await this.chatTurn();
+      }
       if (!msg) break; // abgebrochen
       let calls = msg.tool_calls || [];
       if (!calls.length) calls = extractTextToolCalls(msg.content);

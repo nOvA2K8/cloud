@@ -151,7 +151,10 @@ ipcMain.handle('project:build', async () => {
     const out = String(await a.toolCtx.run('build_project', {}));
     const ok = /BUILD ERFOLGREICH/.test(out);
     emit('tool_result', { name: 'build_project', ok, text: out.split('\n').slice(-25).join('\n') });
-    emit('status', ok ? '✅ Build erfolgreich!' : '❌ Build fehlgeschlagen – Details im Kasten oben und im Build-Log. Schick ein Foto davon, falls du nicht weiterkommst.');
+    const sdk = /LÖSUNG \(an den Nutzer/.test(out);
+    emit('status', ok ? '✅ Build erfolgreich!'
+      : sdk ? '❌ Visual Studio / Windows SDK fehlt: Visual Studio Installer öffnen → „Spieleentwicklung mit C++“ + „Desktopentwicklung mit C++“ + Windows 11 SDK anhaken → installieren → PC neu starten → nochmal 🔨 Kompilieren.'
+      : '❌ Build fehlgeschlagen – Details im Kasten oben und im Build-Log. Schick ein Foto davon, falls du nicht weiterkommst.');
   } catch (e) {
     emit('error', e.message);
   }

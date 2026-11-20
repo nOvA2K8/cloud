@@ -63,3 +63,36 @@ const { TOOLS, ToolContext, validateInput } = require('../src/tools');
   assert.match(unreal.engineHelp(), /Einstellungen/);
   console.log('Engine-Erkennung: Tests bestanden.');
 })();
+
+// --- Windows-Befehlszeile mit Leerzeichen in Pfaden ---
+(() => {
+  const line = unreal.winCommandLine('C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Build\\BatchFiles\\Build.bat',
+    ['MilitrFlughafenEditor', 'Win64', 'Development', '-Project=C:\\Users\\PC\\UnrealForge Projects\\MilitrFlughafen\\MilitrFlughafen.uproject', '-WaitMutex']);
+  assert.strictEqual(line,
+    '""C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Build\\BatchFiles\\Build.bat" MilitrFlughafenEditor Win64 Development "-Project=C:\\Users\\PC\\UnrealForge Projects\\MilitrFlughafen\\MilitrFlughafen.uproject" -WaitMutex"');
+  console.log('Windows-Befehlszeile: Test bestanden.');
+})();
+
+// --- Build-Skript mit Leerzeichen im Pfad wirklich ausführen (Linux/Mac: bash) ---
+(async () => {
+  if (process.platform === 'win32') return;
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'forge sp '));
+  const sh = path.join(d, 'Build Tool.sh');
+  fs.writeFileSync(sh, 'for a in "$@"; do echo "ARG[$a]"; done\n');
+  const r = await unreal.runScript(sh, ['X', '-Project=/a b/c.uproject']);
+  assert.strictEqual(r.code, 0);
+  assert.ok(r.output.includes('ARG[-Project=/a b/c.uproject]'), r.output);
+  console.log('Build-Skript mit Leerzeichen: Test bestanden.');
+})();
+
+// --- Windows: echte .bat in Ordner mit Leerzeichen (läuft in GitHub Actions auf windows-latest) ---
+(async () => {
+  if (process.platform !== 'win32') return;
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'forge sp '));
+  const bat = path.join(d, 'Build Tool.bat');
+  fs.writeFileSync(bat, '@echo off\r\n:loop\r\nif "%~1"=="" goto end\r\necho ARG[%~1]\r\nshift\r\ngoto loop\r\n:end\r\n');
+  const r = await unreal.runScript(bat, ['X', '-Project=C:\\a b\\c.uproject']);
+  assert.strictEqual(r.code, 0, r.output);
+  assert.ok(r.output.includes('ARG[-Project=C:\\a b\\c.uproject]'), r.output);
+  console.log('Windows .bat mit Leerzeichen: Test bestanden.');
+})().catch((e) => { console.error(e); process.exit(1); });

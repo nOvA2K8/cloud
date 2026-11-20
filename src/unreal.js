@@ -112,10 +112,29 @@ function engineTools(dir) {
 }
 
 /** Führt einen Prozess aus, streamt Ausgabe, gibt gekürztes Ergebnis zurück. */
-function runProcess(cmd, args, { cwd, onOutput, timeoutMs = 60 * 60 * 1000, shell = false } = {}) {
+/** Setzt ein Argument für cmd.exe in Anführungszeichen, wenn es Leerzeichen o. ä. enthält. */
+function quoteWin(a) {
+  const s = String(a);
+  return /[\s&()^|<>,;=]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Komplette cmd.exe-Zeile: Pfade wie "C:\Program Files\..." bleiben ein Argument. */
+function winCommandLine(cmd, args) {
+  return `"${[cmd, ...args].map(quoteWin).join(' ')}"`;
+}
+
+/** Startet eine .bat/.sh-Datei sicher (Windows: über cmd.exe mit korrekten Anführungszeichen). */
+function runScript(file, args, opts = {}) {
+  if (isWin) {
+    return runProcess(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', winCommandLine(file, args)], { ...opts, verbatim: true });
+  }
+  return runProcess('bash', [file, ...args], opts);
+}
+
+function runProcess(cmd, args, { cwd, onOutput, timeoutMs = 60 * 60 * 1000, shell = false, verbatim = false } = {}) {
   return new Promise((resolve) => {
     let out = '';
-    const child = spawn(cmd, args, { cwd, shell, windowsHide: true });
+    const child = spawn(cmd, args, { cwd, shell, windowsHide: true, windowsVerbatimArguments: verbatim });
     const timer = setTimeout(() => { child.kill(); out += '\n[Abgebrochen: Zeitlimit erreicht]'; }, timeoutMs);
     const onData = (d) => { const s = d.toString(); out += s; onOutput && onOutput(s); };
     child.stdout.on('data', onData);
@@ -278,4 +297,4 @@ function findUproject(root) {
   } catch { return null; }
 }
 
-module.exports = { findEngines, engineHelp, launcherInstalls, runProcess, scaffoldProject, findUproject, safeName, isWin };
+module.exports = { runScript, winCommandLine, findEngines, engineHelp, launcherInstalls, runProcess, scaffoldProject, findUproject, safeName, isWin };

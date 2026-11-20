@@ -263,9 +263,13 @@ class ToolContext {
         const up = unreal.findUproject(this.resolve('.'));
         if (!up) throw new Error('Keine .uproject-Datei im Projekt');
         const proj = path.basename(up, '.uproject');
-        const r = await unreal.runProcess(eng.build,
+        const r = await unreal.runScript(eng.build,
           [`${proj}Editor`, eng.platform, 'Development', `-Project=${up}`, '-WaitMutex', '-NoHotReloadFromIDE'],
-          { cwd: eng.dir, onOutput: this.onLog, shell: unreal.isWin });
+          { cwd: eng.dir, onOutput: this.onLog });
+        if (r.code !== 0 && /is not recognized|wird nicht als|No such file|Startfehler/i.test(r.output)) {
+          r.output += '\n\nHINWEIS FÜR DIE KI: Das ist ein Startproblem des Build-Werkzeugs, KEIN fehlendes Unreal. ' +
+            'Die Engine ist installiert. Sag dem Nutzer, er soll diese Fehlermeldung an den Entwickler von Unreal Forge schicken.';
+        }
         this.learnFromBuild(r);
         return `Exit-Code ${r.code} (${r.code === 0 ? 'BUILD ERFOLGREICH' : 'BUILD FEHLGESCHLAGEN'})\n${r.output}`;
       }
